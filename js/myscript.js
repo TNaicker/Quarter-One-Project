@@ -10,6 +10,8 @@ var score = 0;
 var waveNumber = 1;
 var lives = 3;
 var bossHP = 300;
+var livingEnemies = [];
+var playerAlive = true;
 
 function preload() {
 
@@ -36,6 +38,7 @@ function create() {
   //Adding player + animations
   player = game.add.sprite(0, 0, 'player');
   game.physics.enable(player, Phaser.Physics.ARCADE);
+  player.body.collideWorldBounds = true;
   move = player.animations.add('shoot', [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 0]);
 
   //Boss sprite
@@ -53,15 +56,8 @@ function create() {
   enemyGroup4 = game.add.group();
   enemyGroup5 = game.add.group();
   enemyGroup1 = game.add.group();
-  for(var x = 0; x < 20; x++) {
 
-    baddy1 = enemyGroup1.create(200 + Math.random()*500, 50 + Math.random()*200, 'enemy1');
-    //This keeps track of how many enemies there are
-    enemyHolder++;
-
-  }
-
-
+  makeEnemyGroup(enemyGroup1, 'enemy1');
   makeEnemyGroup(enemyGroup2, 'enemy2');
   enemyGroup2.visible = false;
   makeEnemyGroup(enemyGroup3, 'enemy3');
@@ -90,11 +86,23 @@ function create() {
   bullets = game.add.group();
   bullets.enableBody = true;
   bullets.physicsBodyType = Phaser.Physics.ARCADE;
-  bullets.createMultiple(30, 'bullets');
+  bullets.createMultiple(1000, 'bullets');
   bullets.setAll('anchor.x', 0.5);
   bullets.setAll('anchor.y', 1);
   bullets.setAll('outOfBoundsKill', true);
   bullets.setAll('checkWorldBounds', true);
+
+  // Enemy Bullet group
+  enemyBullets = game.add.group();
+  enemyBullets.enableBody = true;
+  enemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
+  enemyBullets.createMultiple(1000, 'bullets');
+  enemyBullets.setAll('anchor.x', 0.5);
+  enemyBullets.setAll('anchor.y', 1);
+  enemyBullets.setAll('outOfBoundsKill', true);
+  enemyBullets.setAll('checkWorldBounds', true);
+
+  game.time.events.repeat(100, 99999, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
@@ -110,7 +118,7 @@ function update() {
 
   //This checks for collision between these two and runs playerHitEnemy when they end up colliding
   game.physics.arcade.overlap(bullets, enemyGroup1, playerHitEnemy);
-  game.physics.arcade.overlap(player, enemyGroup1, enemyHitPlayer, null, this);
+  game.physics.arcade.overlap(enemyBullets, player, enemyHitPlayer);
 
   //This is to keep the player from moving when pressing nothing
   player.body.velocity.x = 0;
@@ -129,6 +137,7 @@ function update() {
   }
     if(fireButton.isDown) {
       fireBullet();
+      // enemyFireBullet();
       player.animations.play('shoot', 15, true);
     }else{
       player.animations.stop();
@@ -141,18 +150,19 @@ function update() {
   game.debug.text("SCORE: " + score, 200, 370);
   game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 200, 390);
   game.debug.text("BOSS HP: " + bossHP, 400, 370);
+  game.debug.text("GAME TIME: " + game.time.now, 500, 390);
 
-  if(enemyHolder <= 60){
+  if(enemyHolder <= 300){
     enemyGroup2.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup2, playerHitEnemy2);
     waveNumber = 2;
   }
-  if(enemyHolder <= 40) {
+  if(enemyHolder <= 200) {
     enemyGroup3.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup3, playerHitEnemy3);
     waveNumber = 3;
   }
-  if(enemyHolder <= 20) {
+  if(enemyHolder <= 100) {
     enemyGroup4.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup4, playerHitEnemy4);
     waveNumber = 4;
@@ -186,7 +196,25 @@ function fireBullet() {
           bulletTime = game.time.now + 100;
       }
   }
+}
+function enemyFireBullet() {
 
+  if (game.time.now > bulletTime) {
+      enemyBullet = enemyBullets.getFirstExists(false);
+
+      enemyGroup1.forEach(function(baddy) {
+        livingEnemies.push(baddy);
+      });
+
+      var random=game.rnd.integerInRange(0,livingEnemies.length-1);
+
+      var shooter=livingEnemies[random];
+
+      enemyBullet.reset(shooter.body.x, shooter.body.y);
+
+      game.physics.arcade.moveToObject(enemyBullet, player, 300);
+      firingTimer = game.time.now + 500;
+      }
 }
 
 function playerHitEnemy(bullets, enemyGroup1) {
@@ -242,12 +270,25 @@ function playerHitBoss(bullets, bossGroup) {
   bullets.kill();
 }
 
-function enemyHitPlayer(enemyGroup1, player){
+function enemyHitPlayer(enemyBullets, player){
   player.kill();
+  enemyBullets.kill();
+  playerAlive = false;
 }
 function makeEnemyGroup(group, type) {
-  for(var x = 0; x < 20; x++) {
-    baddy2 = group.create(200 + Math.random()*500, 50 + Math.random()*200, type);
-    enemyHolder++
+  for(var x = 0; x < 10; x++) {
+    for(var y = 0; y < 10; y++){
+      // baddy = group.create(200 + Math.random()*500, 50 + Math.random()*200, type);
+      enemyHolder++
+      baddy = group.create(400 + x*30, 50 + y*30, type);
+    }
+
+    // var tween = game.add.tween(baddy).to( { x: 400 }, 2000, Phaser.Easing.Linear.None, true, 0, 1000, true);
+    //
+    // tween.onLoop.add(descend, this);
   }
+}
+
+function descend() {
+  baddy.x -= 10;
 }
