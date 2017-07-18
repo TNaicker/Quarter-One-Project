@@ -9,7 +9,7 @@ var waveOne = false;
 var score = 0;
 var waveNumber = 1;
 var lives = 3;
-var bossHP = 300;
+var bossHP = 100;
 var livingEnemies = [];
 var playerAlive = true;
 var waveTwoHP = 5;
@@ -28,7 +28,8 @@ function preload() {
   game.load.spritesheet('enemy3', 'img/mon3.png', 64, 64);
   game.load.spritesheet('enemy4', 'img/mon4.png', 64, 64);
   game.load.spritesheet('boss', 'img/bosscat.png', 390, 400);
-  game.load.image('background', 'img/background.png')
+  game.load.image('background', 'img/background.png');
+  game.load.image('GameOver', 'img/GameOver.jpg');
 
 }
 function create() {
@@ -45,11 +46,9 @@ function create() {
 
   //Boss sprite
   bossGroup = game.add.group();
-  bossGroup.create(400, 20, 'boss');
+  var boss = bossGroup.create(900, 20, 'boss');
+  boss.scale.x *= -1;
   bossGroup.visible = false;
-  // boss = game.add.sprite(900, 20, 'boss');
-  // boss.scale.setTo(-1, 1);
-  // boss.visible = false;
   game.physics.enable(bossGroup, Phaser.Physics.ARCADE);
 
   // enemy groups
@@ -59,6 +58,7 @@ function create() {
   enemyGroup5 = game.add.group();
   enemyGroup1 = game.add.group();
 
+  //Creating enemy groups here and hiding the later waves.
   makeEnemyGroup(enemyGroup1, 'enemy1');
   makeEnemyGroup(enemyGroup2, 'enemy2');
   enemyGroup2.visible = false;
@@ -110,11 +110,16 @@ function create() {
   enemyBullets.callAll('animations.add', 'animations', 'moving', [4, 5, 6]);
   enemyBullets.callAll('play', null, 'moving', 5, true);
 
-  game.time.events.repeat(1000, 99999, enemyFireBullet, this);
+  //This makes the enemies fire bullets
+  game.time.events.repeat(3000, 99999, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
   fireButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
+
+
+
 
 }
 function update() {
@@ -145,23 +150,22 @@ function update() {
   }
     if(fireButton.isDown) {
       fireBullet();
-      // enemyFireBullet();
       player.animations.play('shoot', 15, true);
     }else{
       player.animations.stop();
       player.frame = 0;
     }
 
-  //For debug purposes
-  game.debug.text("Current Wave: " + waveNumber, 400, 350);
-  game.debug.text("DEBUG TEXT: " + enemyHolder, 200, 350);
-  game.debug.text("SCORE: " + score, 200, 370);
-  game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 200, 390);
-  game.debug.text("BOSS HP: " + bossHP, 400, 370);
-  game.debug.text("GAME TIME: " + waveTwoHP, 500, 390);
+  //===========For debugging purposes===========
+  game.debug.text("Current Wave: " + waveNumber, 300, 350);
+  game.debug.text("DEBUG TEXT: " + enemyHolder, 100, 350);
+  game.debug.text("SCORE: " + score, 100, 370);
+  game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 100, 390);
+  game.debug.text("BOSS HP: " + bossHP, 300, 370);
+  game.debug.text("LIVES: " + lives, 400, 390);
 
+  // These if statements spawn the later waves if the previous wave is killed
   if(enemyHolder <= 300){
-    bullets.destroy();
     enemyGroup2.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup2, playerHitEnemy2);
     waveNumber = 2;
@@ -188,8 +192,10 @@ function update() {
 //I don't remember what this is but it'll be something I guess
 function moveDown() {
 
-
 }
+// ===============================================================================================================FUNCTIONS========================================================================================================================
+
+
 
 //This is the function that fires the bullets. It makes checks for a bullet object in the array, then grabs the first one.
 //It also maintains a proper fire rate.
@@ -221,11 +227,12 @@ function enemyFireBullet() {
 
       enemyBullet.reset(shooter.body.x, shooter.body.y);
 
-      game.physics.arcade.moveToObject(enemyBullet, player, 300);
+      game.physics.arcade.moveToObject(enemyBullet, player, 200);
       firingTimer = game.time.now + 500;
       }
 }
 
+//These are the functions that handle collision
 function playerHitEnemy(bullets, enemyGroup1) {
   enemyGroup1.kill();
   enemyHolder--;
@@ -236,13 +243,9 @@ function playerHitEnemy(bullets, enemyGroup1) {
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
-
 function playerHitEnemy2(bullets, enemyGroup2) {
-  waveTwoHP--;
-  if(waveTwoHP < 0){
-    enemyGroup2.kill();
-    score++;
-  }
+  enemyGroup2.kill();
+  score++;
   enemyHolder--;
   if(enemyHolder === 0){
     waveOne = true;
@@ -250,7 +253,6 @@ function playerHitEnemy2(bullets, enemyGroup2) {
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
-
 function playerHitEnemy3(bullets, enemyGroup3) {
   enemyGroup3.kill();
   enemyHolder--;
@@ -261,7 +263,6 @@ function playerHitEnemy3(bullets, enemyGroup3) {
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
-
 function playerHitEnemy4(bullets, enemyGroup4) {
   enemyGroup4.kill();
   enemyHolder--;
@@ -272,37 +273,71 @@ function playerHitEnemy4(bullets, enemyGroup4) {
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
-
 function playerHitBoss(bullets, bossGroup) {
   bossHP--;
   if(bossHP === 0) {
     bossGroup.kill();
+
+    var bmd = game.add.bitmapData(1, 1);
+    bmd.fill(0, 0, 0);
+    var semiTransparentOverlay = game.add.sprite(0, 0, bmd);
+    semiTransparentOverlay.scale.setTo(game.width, game.height);
+    semiTransparentOverlay.alpha = 0;
+    game.add.tween(semiTransparentOverlay).to({alpha:0.7}, 500, Phaser.Easing.Quadratic.In, true);
+
+    //WIN TEXT
+    winner = game.add.text(game.width/2, game.height/2, 'YOU WIN', { font: "70px Arial", fill: "#19de65" });
+    winner.anchor.setTo(0.5);
+    score = game.add.text(game.width/2 - 90, game.height/2 + 70, 'Score: ' + score, { font: "30px Arial", fill: "#19de65" });
+    score.anchor.setTo(0.5);
+
+    //This stops enemies from firing
+    game.time.events.stop();
   }
   score++;
   bullets.kill();
 }
-
 function enemyHitPlayer(enemyBullets, player){
+  lives--;
+  enemyBullets.reset(0, 200);
+  if(lives <= 0) {
+    playerAlive = false;
+    enemyBullets.kill();
+
+    // FOR GAMEOVER
+    var bmd = game.add.bitmapData(1, 1);
+    bmd.fill(0, 0, 0);
+    var semiTransparentOverlay = game.add.sprite(0, 0, bmd);
+    semiTransparentOverlay.scale.setTo(game.width, game.height);
+    semiTransparentOverlay.alpha = 0;
+    game.add.tween(semiTransparentOverlay).to({alpha:0.7}, 500, Phaser.Easing.Quadratic.In, true);
+    gameover = game.add.sprite(game.width/2, game.height/2, 'GameOver');
+    gameover.anchor.setTo(0.5);
+    //This stops the enemy from firing
+    game.time.events.stop();
+
+
+
+  }
   player.kill();
-  enemyBullets.kill();
-  playerAlive = false;
 }
+
+//These are the functions that handle making the enemies etc.
 function makeEnemyGroup(group, type) {
   for(var x = 0; x < 10; x++) {
     for(var y = 0; y < 10; y++){
       // baddy = group.create(200 + Math.random()*500, 50 + Math.random()*200, type);
       enemyHolder++
-      baddy = group.create(500 + x*30, 50 + y*30, type);
+      baddy = group.create(480 + x*33, 50 + y*33, type);
       baddy.anchor.setTo(0.5);
       baddy.scale.x *= -1
+      var tween = game.add.tween(baddy).to( { x: baddy.x-20 }, 2000, Phaser.Easing.Linear.None, true, 0, 1000, true);
+
+      tween.onLoop.add(descend, this);
     }
 
-    // var tween = game.add.tween(baddy).to( { x: 400 }, 2000, Phaser.Easing.Linear.None, true, 0, 1000, true);
-    //
-    // tween.onLoop.add(descend, this);
   }
 }
-
 function descend() {
-  baddy.x -= 10;
+  baddy.y-= 5;
 }
