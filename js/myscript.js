@@ -12,6 +12,7 @@ var lives = 3;
 var bossHP = 300;
 var livingEnemies = [];
 var playerAlive = true;
+var waveTwoHP = 5;
 
 function preload() {
 
@@ -39,6 +40,7 @@ function create() {
   player = game.add.sprite(0, 0, 'player');
   game.physics.enable(player, Phaser.Physics.ARCADE);
   player.body.collideWorldBounds = true;
+  player.anchor.setTo(0.5);
   move = player.animations.add('shoot', [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 0]);
 
   //Boss sprite
@@ -68,6 +70,7 @@ function create() {
   //Giving enemies physics and animations
   game.physics.enable(enemyGroup1, Phaser.Physics.ARCADE);
   enemyGroup1.callAll('animations.add', 'animations', 'moving', [1, 2, 3]);
+  enemyGroup1.callAll('animations.add', 'animations', 'dying', [10, 11, 12, 13, 14, 15]);
   enemyGroup1.callAll('play', null, 'moving', 5, true);
   //Group 2
   game.physics.enable(enemyGroup2, Phaser.Physics.ARCADE);
@@ -75,7 +78,7 @@ function create() {
   enemyGroup2.callAll('play', null, 'moving', 5, true);
   //Group 3
   game.physics.enable(enemyGroup3, Phaser.Physics.ARCADE);
-  enemyGroup3.callAll('animations.add', 'animations', 'moving', [1, 2, 3]);
+  enemyGroup3.callAll('animations.add', 'animations', 'moving', [1, 2, 3,]);
   enemyGroup3.callAll('play', null, 'moving', 5, true);
   //Group 4
   game.physics.enable(enemyGroup4, Phaser.Physics.ARCADE);
@@ -91,18 +94,23 @@ function create() {
   bullets.setAll('anchor.y', 1);
   bullets.setAll('outOfBoundsKill', true);
   bullets.setAll('checkWorldBounds', true);
+  bullets.callAll('animations.add', 'animations', 'moving', [1, 2, 3]);
+  bullets.callAll('play', null, 'moving', 5, true);
 
   // Enemy Bullet group
   enemyBullets = game.add.group();
   enemyBullets.enableBody = true;
   enemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
-  enemyBullets.createMultiple(1000, 'bullets');
+  enemyBullets.createMultiple(1000, 'bullets', 4);
   enemyBullets.setAll('anchor.x', 0.5);
   enemyBullets.setAll('anchor.y', 1);
+  enemyBullets.setAll('scale.x', -1);
   enemyBullets.setAll('outOfBoundsKill', true);
   enemyBullets.setAll('checkWorldBounds', true);
+  enemyBullets.callAll('animations.add', 'animations', 'moving', [4, 5, 6]);
+  enemyBullets.callAll('play', null, 'moving', 5, true);
 
-  game.time.events.repeat(100, 99999, enemyFireBullet, this);
+  game.time.events.repeat(1000, 99999, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
@@ -150,9 +158,10 @@ function update() {
   game.debug.text("SCORE: " + score, 200, 370);
   game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 200, 390);
   game.debug.text("BOSS HP: " + bossHP, 400, 370);
-  game.debug.text("GAME TIME: " + game.time.now, 500, 390);
+  game.debug.text("GAME TIME: " + waveTwoHP, 500, 390);
 
   if(enemyHolder <= 300){
+    bullets.destroy();
     enemyGroup2.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup2, playerHitEnemy2);
     waveNumber = 2;
@@ -190,7 +199,7 @@ function fireBullet() {
       bullet = bullets.getFirstExists(false);
 
       if (bullet) {
-          bullet.reset(player.x+50, player.y+35);
+          bullet.reset(player.x+50, player.y+15);
           bullet.body.velocity.x = 400;
           //This code determines how fast you can fire bullets.
           bulletTime = game.time.now + 100;
@@ -229,12 +238,15 @@ function playerHitEnemy(bullets, enemyGroup1) {
 }
 
 function playerHitEnemy2(bullets, enemyGroup2) {
-  enemyGroup2.kill();
+  waveTwoHP--;
+  if(waveTwoHP < 0){
+    enemyGroup2.kill();
+    score++;
+  }
   enemyHolder--;
   if(enemyHolder === 0){
     waveOne = true;
   }
-  score++;
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
@@ -280,7 +292,9 @@ function makeEnemyGroup(group, type) {
     for(var y = 0; y < 10; y++){
       // baddy = group.create(200 + Math.random()*500, 50 + Math.random()*200, type);
       enemyHolder++
-      baddy = group.create(400 + x*30, 50 + y*30, type);
+      baddy = group.create(500 + x*30, 50 + y*30, type);
+      baddy.anchor.setTo(0.5);
+      baddy.scale.x *= -1
     }
 
     // var tween = game.add.tween(baddy).to( { x: 400 }, 2000, Phaser.Easing.Linear.None, true, 0, 1000, true);
