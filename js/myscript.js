@@ -13,6 +13,49 @@ var bossHP = 100;
 var livingEnemies = [];
 var playerAlive = true;
 var waveTwoHP = 5;
+var userName = prompt("Please enter your name");
+var highScoreText = { font: "40px Arial", fill: "#ffffff" };
+var testScores = [];
+
+//FIREBASE STUFF
+var config = {
+    apiKey: "AIzaSyBNZQCDvsc9M_-NPf6tfoIt6HOmJqJCcrE",
+    authDomain: "space-cat-42326.firebaseapp.com",
+    databaseURL: "https://space-cat-42326.firebaseio.com",
+    projectId: "space-cat-42326",
+    storageBucket: "space-cat-42326.appspot.com",
+    messagingSenderId: "528376739362"
+  };
+  firebase.initializeApp(config);
+console.log(firebase);
+
+var database = firebase.database();
+var ref = database.ref('scores');
+var retRef = database.ref('scores');
+
+retRef.on('value', gotData, notData);
+
+function gotData(data) {
+  testScores = [];
+  var fullScores = data.val();
+  var keys = Object.keys(fullScores);
+  // console.log(keys);
+  for(var x = 0; x < keys.length; x++) {
+    var k = keys[x];
+    var name = fullScores[k].name;
+    var theScores = fullScores[k].score;
+    testScores.push(fullScores[k].score);
+  }
+  testScores.sort(function(x, y) {
+    return y - x;
+  })
+  console.log(testScores);
+}
+
+function notData(nope) {
+  console.log("ERROR");
+  console.log(nope);
+}
 
 function preload() {
 
@@ -111,14 +154,13 @@ function create() {
   enemyBullets.callAll('play', null, 'moving', 5, true);
 
   //This makes the enemies fire bullets
-  game.time.events.repeat(3000, 99999, enemyFireBullet, this);
+  game.time.events.repeat(300, 99999, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
   fireButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-
-
-
+  pauseButton = game.input.keyboard.addKey(Phaser.Keyboard.P);
+  unpauseButton = game.input.keyboard.addKey(Phaser.Keyboard.I);
 
 
 }
@@ -155,6 +197,12 @@ function update() {
       player.animations.stop();
       player.frame = 0;
     }
+  if(pauseButton.isDown) {
+    game.paused = true;
+  }
+  if(unpauseButton.isDown) {
+    game.paused = false;
+  }
 
   //===========For debugging purposes===========
   game.debug.text("Current Wave: " + waveNumber, 300, 350);
@@ -162,7 +210,7 @@ function update() {
   game.debug.text("SCORE: " + score, 100, 370);
   game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 100, 390);
   game.debug.text("BOSS HP: " + bossHP, 300, 370);
-  game.debug.text("LIVES: " + lives, 400, 390);
+  game.debug.text("LIVES: " + game.time.now, 400, 390);
 
   // These if statements spawn the later waves if the previous wave is killed
   if(enemyHolder <= 300){
@@ -288,11 +336,19 @@ function playerHitBoss(bullets, bossGroup) {
     //WIN TEXT
     winner = game.add.text(game.width/2, game.height/2, 'YOU WIN', { font: "70px Arial", fill: "#19de65" });
     winner.anchor.setTo(0.5);
-    score = game.add.text(game.width/2 - 90, game.height/2 + 70, 'Score: ' + score, { font: "30px Arial", fill: "#19de65" });
-    score.anchor.setTo(0.5);
+    winScore = game.add.text(game.width/2 - 40, game.height/2 + 70, 'Score: ' + score, { font: "30px Arial", fill: "#19de65" });
+    winScore.anchor.setTo(0.5);
+
+    var data = {
+      name: userName,
+      score: score
+    }
+    ref.push(data);
+
+    game.time.events.add(5000, displayHighScoresWin, this);
 
     //This stops enemies from firing
-    game.time.events.stop();
+    // game.time.events.stop();
   }
   score++;
   bullets.kill();
@@ -310,11 +366,21 @@ function enemyHitPlayer(enemyBullets, player){
     var semiTransparentOverlay = game.add.sprite(0, 0, bmd);
     semiTransparentOverlay.scale.setTo(game.width, game.height);
     semiTransparentOverlay.alpha = 0;
-    game.add.tween(semiTransparentOverlay).to({alpha:0.7}, 500, Phaser.Easing.Quadratic.In, true);
+    game.add.tween(semiTransparentOverlay).to({alpha:0.9}, 500, Phaser.Easing.Quadratic.In, true);
     gameover = game.add.sprite(game.width/2, game.height/2, 'GameOver');
     gameover.anchor.setTo(0.5);
     //This stops the enemy from firing
-    game.time.events.stop();
+    // game.time.events.stop();
+    var data = {
+      name: userName,
+      score: score
+    }
+    ref.push(data);
+
+    yourScore = game.add.text(game.width/2 - 40, game.height/2 + 70, 'Score: ' + score, { font: "30px Arial", fill: "#ffffff" });
+    yourScore.anchor.setTo(0.5);
+
+    game.time.events.add(5000, displayHighScores, this);
 
 
 
@@ -340,4 +406,41 @@ function makeEnemyGroup(group, type) {
 }
 function descend() {
   baddy.y-= 5;
+}
+function displayHighScores() {
+  winner.visible = false;
+  score.visible = false;
+  gameover.visible = false;
+  topFive.visible = false;
+  scoresTitle = game.add.text(game.width/2, game.height/2 - 150, 'HIGHSCORES', { font: "70px Arial", fill: "#ffffff" });
+  scoresTitle.anchor.setTo(0.5);
+
+  hiScore1 = game.add.text(game.width/2, game.height/2 - 50, '1: ' + testScores[0], highScoreText);
+  hiScore1.anchor.setTo(0.5);
+  hiScore2 = game.add.text(game.width/2, game.height/2, '2: ' + testScores[1], highScoreText);
+  hiScore2.anchor.setTo(0.5);
+  hiScore3 = game.add.text(game.width/2, game.height/2 + 50, '3: ' + testScores[2], highScoreText);
+  hiScore3.anchor.setTo(0.5);
+  hiScore4 = game.add.text(game.width/2, game.height/2 + 100, '4: ' + testScores[3], highScoreText);
+  hiScore4.anchor.setTo(0.5);
+  hiScore5 = game.add.text(game.width/2, game.height/2 + 150, '5: ' + testScores[4], highScoreText);
+  hiScore5.anchor.setTo(0.5);
+}
+function displayHighScoresWin() {
+    winner.visible = false;
+    winScore.visible = false;
+
+    scoresTitle = game.add.text(game.width/2, game.height/2 - 150, 'HIGHSCORES', { font: "70px Arial", fill: "#ffffff" });
+    scoresTitle.anchor.setTo(0.5);
+
+    hiScore1 = game.add.text(game.width/2, game.height/2 - 50, '1: ' + testScores[0], highScoreText);
+    hiScore1.anchor.setTo(0.5);
+    hiScore2 = game.add.text(game.width/2, game.height/2, '2: ' + testScores[1], highScoreText);
+    hiScore2.anchor.setTo(0.5);
+    hiScore3 = game.add.text(game.width/2, game.height/2 + 50, '3: ' + testScores[2], highScoreText);
+    hiScore3.anchor.setTo(0.5);
+    hiScore4 = game.add.text(game.width/2, game.height/2 + 100, '4: ' + testScores[3], highScoreText);
+    hiScore4.anchor.setTo(0.5);
+    hiScore5 = game.add.text(game.width/2, game.height/2 + 150, '5: ' + testScores[4], highScoreText);
+    hiScore5.anchor.setTo(0.5);
 }
