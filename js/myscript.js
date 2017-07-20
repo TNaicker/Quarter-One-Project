@@ -153,7 +153,7 @@ function create() {
   enemyBullets.callAll('play', null, 'moving', 5, true);
 
   //This makes the enemies fire bullets
-  game.time.events.repeat(300, bulletShootTimes, enemyFireBullet, this);
+  game.time.events.repeat(100, bulletShootTimes, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
@@ -175,6 +175,7 @@ function update() {
   //This checks for collision between these two and runs playerHitEnemy when they end up colliding
   game.physics.arcade.overlap(bullets, enemyGroup1, playerHitEnemy);
   game.physics.arcade.overlap(enemyBullets, player, enemyHitPlayer);
+  game.physics.arcade.overlap(player, baddy, playerCollideEnemy);
 
   //This is to keep the player from moving when pressing nothing
   player.body.velocity.x = 0;
@@ -205,14 +206,6 @@ function update() {
     game.paused = false;
   }
 
-  //===========For debugging purposes===========
-  game.debug.text("Current Wave: " + waveNumber, 300, 350);
-  game.debug.text("DEBUG TEXT: " + enemyHolder, 100, 350);
-  game.debug.text("SCORE: " + score, 100, 370);
-  game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 100, 390);
-  game.debug.text("BOSS HP: " + bossHP, 300, 370);
-  game.debug.text("TIME: " + game.time.now / 1000, 400, 390);
-
   // These if statements spawn the later waves if the previous wave is killed
   if(enemyHolder <= 300){
     enemyGroup2.visible = true;
@@ -235,6 +228,13 @@ function update() {
     waveNumber = "BOSS";
   }
 
+  //===========For debugging purposes===========
+  game.debug.text("Current Wave: " + waveNumber, 300, 350);
+  game.debug.text("DEBUG TEXT: " + enemyHolder, 100, 350);
+  game.debug.text("SCORE: " + score, 100, 370);
+  game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 100, 390);
+  game.debug.text("BOSS HP: " + bossHP, 300, 370);
+  game.debug.text("TIME: " + Math.floor(game.time.now / 1000), 400, 390);
 
 }
 
@@ -401,6 +401,9 @@ function enemyHitPlayer(enemyBullets, player){
 
   }
   player.kill();
+}
+function playerCollideEnemy(player, baddy) {
+  baddy.kill();
 }
 
 //These are the functions that handle making the enemies etc.
