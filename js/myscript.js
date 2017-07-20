@@ -13,9 +13,9 @@ var bossHP = 100;
 var livingEnemies = [];
 var playerAlive = true;
 var waveTwoHP = 5;
-var userName = prompt("Please enter your name");
-var highScoreText = { font: "40px Arial", fill: "#ffffff" };
+var highScoreText = { font: "40px Chalkduster", fill: "#ffffff" };
 var testScores = [];
+var bulletShootTimes = 99999;
 
 //FIREBASE STUFF
 var config = {
@@ -51,7 +51,6 @@ function gotData(data) {
   })
   console.log(testScores);
 }
-
 function notData(nope) {
   console.log("ERROR");
   console.log(nope);
@@ -154,13 +153,15 @@ function create() {
   enemyBullets.callAll('play', null, 'moving', 5, true);
 
   //This makes the enemies fire bullets
-  game.time.events.repeat(300, 99999, enemyFireBullet, this);
+  game.time.events.repeat(300, bulletShootTimes, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
   fireButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
   pauseButton = game.input.keyboard.addKey(Phaser.Keyboard.P);
   unpauseButton = game.input.keyboard.addKey(Phaser.Keyboard.I);
+
+  game.input.mouse.capture = true;
 
 
 }
@@ -210,7 +211,7 @@ function update() {
   game.debug.text("SCORE: " + score, 100, 370);
   game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 100, 390);
   game.debug.text("BOSS HP: " + bossHP, 300, 370);
-  game.debug.text("LIVES: " + game.time.now, 400, 390);
+  game.debug.text("TIME: " + game.time.now / 1000, 400, 390);
 
   // These if statements spawn the later waves if the previous wave is killed
   if(enemyHolder <= 300){
@@ -321,6 +322,7 @@ function playerHitEnemy4(bullets, enemyGroup4) {
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
+//These two functions contain the win/lose conditions and then interact with firebase to update scores.
 function playerHitBoss(bullets, bossGroup) {
   bossHP--;
   if(bossHP === 0) {
@@ -333,6 +335,17 @@ function playerHitBoss(bullets, bossGroup) {
     semiTransparentOverlay.alpha = 0;
     game.add.tween(semiTransparentOverlay).to({alpha:0.7}, 500, Phaser.Easing.Quadratic.In, true);
 
+    var endTime = game.time.now;
+    if(endTime / 1000 < 50) {
+      score += Math.floor(endTime / 50) + lives * 100;
+    }else if(endTime / 1000 < 60) {
+      score += Math.floor(endTime / 100) + lives * 100;
+    }else if(endTime / 1000 < 80) {
+      score += Math.floor(endTime / 400) + lives * 100;
+    }else {
+      score += Math.floor(endTime / 1000) + lives * 100;
+    }
+
     //WIN TEXT
     winner = game.add.text(game.width/2, game.height/2, 'YOU WIN', { font: "70px Arial", fill: "#19de65" });
     winner.anchor.setTo(0.5);
@@ -340,10 +353,11 @@ function playerHitBoss(bullets, bossGroup) {
     winScore.anchor.setTo(0.5);
 
     var data = {
-      name: userName,
+      name: "TKN",
       score: score
     }
     ref.push(data);
+    bulletShootTimes = 0;
 
     game.time.events.add(5000, displayHighScoresWin, this);
 
@@ -372,10 +386,11 @@ function enemyHitPlayer(enemyBullets, player){
     //This stops the enemy from firing
     // game.time.events.stop();
     var data = {
-      name: userName,
+      name: "TKN",
       score: score
     }
     ref.push(data);
+    bulletShootTimes = 0;
 
     yourScore = game.add.text(game.width/2 - 40, game.height/2 + 70, 'Score: ' + score, { font: "30px Arial", fill: "#ffffff" });
     yourScore.anchor.setTo(0.5);
@@ -407,12 +422,13 @@ function makeEnemyGroup(group, type) {
 function descend() {
   baddy.y-= 5;
 }
+
+//These functions display the highscores at the end
 function displayHighScores() {
-  winner.visible = false;
-  score.visible = false;
+
   gameover.visible = false;
-  topFive.visible = false;
-  scoresTitle = game.add.text(game.width/2, game.height/2 - 150, 'HIGHSCORES', { font: "70px Arial", fill: "#ffffff" });
+  yourScore.visible = false;
+  scoresTitle = game.add.text(game.width/2, game.height/2 - 150, 'HIGHSCORES', { font: "70px Chalkduster", fill: "#ffffff" });
   scoresTitle.anchor.setTo(0.5);
 
   hiScore1 = game.add.text(game.width/2, game.height/2 - 50, '1: ' + testScores[0], highScoreText);
@@ -425,12 +441,16 @@ function displayHighScores() {
   hiScore4.anchor.setTo(0.5);
   hiScore5 = game.add.text(game.width/2, game.height/2 + 150, '5: ' + testScores[4], highScoreText);
   hiScore5.anchor.setTo(0.5);
+
+  game.time.events.stop();
+
+
 }
 function displayHighScoresWin() {
     winner.visible = false;
     winScore.visible = false;
 
-    scoresTitle = game.add.text(game.width/2, game.height/2 - 150, 'HIGHSCORES', { font: "70px Arial", fill: "#ffffff" });
+    scoresTitle = game.add.text(game.width/2, game.height/2 - 150, 'HIGHSCORES', { font: "70px Chalkduster", fill: "#ffffff" });
     scoresTitle.anchor.setTo(0.5);
 
     hiScore1 = game.add.text(game.width/2, game.height/2 - 50, '1: ' + testScores[0], highScoreText);
@@ -443,4 +463,6 @@ function displayHighScoresWin() {
     hiScore4.anchor.setTo(0.5);
     hiScore5 = game.add.text(game.width/2, game.height/2 + 150, '5: ' + testScores[4], highScoreText);
     hiScore5.anchor.setTo(0.5);
+
+    game.time.events.stop();
 }
