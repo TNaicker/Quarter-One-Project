@@ -4,18 +4,23 @@ var game = new Phaser.Game(800, 400, Phaser.AUTO, '',
 //Initialization of various variables
 var bullets;
 var bulletTime = 0;
+var enemyBulletTime = 0;
 var enemyHolder = 0;
 var waveOne = false;
 var score = 0;
 var waveNumber = 1;
-var lives = 3;
-var bossHP = 100;
+var lives = 5;
+var bossHP = 300;
 var livingEnemies = [];
 var playerAlive = true;
 var waveTwoHP = 5;
 var highScoreText = { font: "40px Chalkduster", fill: "#ffffff" };
 var testScores = [];
 var bulletShootTimes = 99999;
+var barrierHP = 0;
+var barrier;
+var shootRate = 250;
+var enemyShootRate = 600;
 
 //FIREBASE STUFF
 var config = {
@@ -55,6 +60,7 @@ function notData(nope) {
   console.log("ERROR");
   console.log(nope);
 }
+//FIREBASE STUFF END
 
 function preload() {
 
@@ -85,6 +91,7 @@ function create() {
   player.body.collideWorldBounds = true;
   player.anchor.setTo(0.5);
   move = player.animations.add('shoot', [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 0]);
+  player.body.setSize(15, 15, 15, 30);
 
   //Boss sprite
   bossGroup = game.add.group();
@@ -153,15 +160,11 @@ function create() {
   enemyBullets.callAll('play', null, 'moving', 5, true);
 
   //This makes the enemies fire bullets
-  game.time.events.repeat(100, bulletShootTimes, enemyFireBullet, this);
+  game.time.events.repeat(200, bulletShootTimes, enemyFireBullet, this);
 
   //For user input
   cursors = game.input.keyboard.createCursorKeys();
   fireButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-  pauseButton = game.input.keyboard.addKey(Phaser.Keyboard.P);
-  unpauseButton = game.input.keyboard.addKey(Phaser.Keyboard.I);
-
-  game.input.mouse.capture = true;
 
 
 }
@@ -175,7 +178,7 @@ function update() {
   //This checks for collision between these two and runs playerHitEnemy when they end up colliding
   game.physics.arcade.overlap(bullets, enemyGroup1, playerHitEnemy);
   game.physics.arcade.overlap(enemyBullets, player, enemyHitPlayer);
-  game.physics.arcade.overlap(player, baddy, playerCollideEnemy);
+  game.physics.arcade.overlap(player, enemyGroup1, playerCollideEnemy);
 
   //This is to keep the player from moving when pressing nothing
   player.body.velocity.x = 0;
@@ -183,14 +186,14 @@ function update() {
 
   //If statements for user input.
   if(cursors.up.isDown){
-    player.body.velocity.y -= 150;
+    player.body.velocity.y -= 250;
   }else if(cursors.down.isDown) {
-    player.body.velocity.y += 150;
+    player.body.velocity.y += 250;
   }
   if(cursors.left.isDown) {
-    player.body.velocity.x -= 200;
+    player.body.velocity.x -= 300;
   }else if(cursors.right.isDown) {
-    player.body.velocity.x += 200;
+    player.body.velocity.x += 300;
   }
     if(fireButton.isDown) {
       fireBullet();
@@ -199,41 +202,44 @@ function update() {
       player.animations.stop();
       player.frame = 0;
     }
-  if(pauseButton.isDown) {
-    game.paused = true;
-  }
-  if(unpauseButton.isDown) {
-    game.paused = false;
-  }
 
   // These if statements spawn the later waves if the previous wave is killed
-  if(enemyHolder <= 300){
+  if(enemyHolder <= 210){
     enemyGroup2.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup2, playerHitEnemy2);
+    enemyShootSpeed = 700;
+    shootRate = 200;
+    enemyShootRate = 1;
     waveNumber = 2;
   }
-  if(enemyHolder <= 200) {
+  if(enemyHolder <= 140) {
     enemyGroup3.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup3, playerHitEnemy3);
+    enemyShootSpeed = 400;
+    shootRate = 150;
+    enemyShootRate = 200;
     waveNumber = 3;
   }
-  if(enemyHolder <= 100) {
+  if(enemyHolder <= 70) {
     enemyGroup4.visible = true;
     game.physics.arcade.overlap(bullets, enemyGroup4, playerHitEnemy4);
+    enemyShootSpeed = 250;
+    shootRate = 100;
+    enemyShootRate = 110;
     waveNumber = 4;
   }
   if(enemyHolder === 0) {
     bossGroup.visible = true;
     game.physics.arcade.overlap(bullets, bossGroup, playerHitBoss);
+    enemyShootSpeed = 90;
+    shootRate = 50;
+    enemyShootRate = 50;
     waveNumber = "BOSS";
   }
 
   //===========For debugging purposes===========
-  game.debug.text("Current Wave: " + waveNumber, 300, 350);
-  game.debug.text("DEBUG TEXT: " + enemyHolder, 100, 350);
-  game.debug.text("SCORE: " + score, 100, 370);
-  game.debug.text("Player velocity X & Y: " + player.body.velocity.x + " " + player.body.velocity.y, 100, 390);
-  game.debug.text("BOSS HP: " + bossHP, 300, 370);
+  game.debug.text("Score: " + score, 100, 390);
+  game.debug.text("Lives " + lives, 250, 390);
   game.debug.text("TIME: " + Math.floor(game.time.now / 1000), 400, 390);
 
 }
@@ -255,28 +261,29 @@ function fireBullet() {
 
       if (bullet) {
           bullet.reset(player.x+50, player.y+15);
-          bullet.body.velocity.x = 400;
+          bullet.body.velocity.x = 500;
           //This code determines how fast you can fire bullets.
-          bulletTime = game.time.now + 100;
+          bulletTime = game.time.now + shootRate;
+          enemybulletTime = game.time.now + 100;
       }
   }
 }
 function enemyFireBullet() {
 
-  if (game.time.now > bulletTime) {
+  if (game.time.now > enemyBulletTime) {
       enemyBullet = enemyBullets.getFirstExists(false);
 
       enemyGroup1.forEach(function(baddy) {
         livingEnemies.push(baddy);
       });
 
-      var random=game.rnd.integerInRange(0,livingEnemies.length-1);
+      var random = game.rnd.integerInRange(0, livingEnemies.length-1);
 
-      var shooter=livingEnemies[random];
+      var shooter = livingEnemies[random];
 
       enemyBullet.reset(shooter.body.x, shooter.body.y);
 
-      game.physics.arcade.moveToObject(enemyBullet, player, 200);
+      game.physics.arcade.moveToObject(enemyBullet, player, 300);
       firingTimer = game.time.now + 500;
       }
 }
@@ -294,7 +301,7 @@ function playerHitEnemy(bullets, enemyGroup1) {
 }
 function playerHitEnemy2(bullets, enemyGroup2) {
   enemyGroup2.kill();
-  score++;
+  score += 3;
   enemyHolder--;
   if(enemyHolder === 0){
     waveOne = true;
@@ -308,7 +315,7 @@ function playerHitEnemy3(bullets, enemyGroup3) {
   if(enemyHolder === 0){
     waveOne = true;
   }
-  score++;
+  score += 7;
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
@@ -318,7 +325,7 @@ function playerHitEnemy4(bullets, enemyGroup4) {
   if(enemyHolder === 0){
     waveOne = true;
   }
-  score++;
+  score += 12;
   // enemyGroup1.remove(baddy1);
   bullets.kill();
 }
@@ -359,12 +366,12 @@ function playerHitBoss(bullets, bossGroup) {
     ref.push(data);
     bulletShootTimes = 0;
 
-    game.time.events.add(5000, displayHighScoresWin, this);
+    game.time.events.add(3000, displayHighScoresWin, this);
 
     //This stops enemies from firing
     // game.time.events.stop();
   }
-  score++;
+  score += 20;
   bullets.kill();
 }
 function enemyHitPlayer(enemyBullets, player){
@@ -395,24 +402,28 @@ function enemyHitPlayer(enemyBullets, player){
     yourScore = game.add.text(game.width/2 - 40, game.height/2 + 70, 'Score: ' + score, { font: "30px Arial", fill: "#ffffff" });
     yourScore.anchor.setTo(0.5);
 
-    game.time.events.add(5000, displayHighScores, this);
+    game.time.events.add(3000, displayHighScores, this);
 
 
 
   }
   player.kill();
 }
-function playerCollideEnemy(player, baddy) {
-  baddy.kill();
+function playerCollideEnemy(player, enemyGroup1) {
+  lives--;
+  player.reset(0, 200);
+  if(lives <= 0) {
+    player.kill();
+  }
 }
 
 //These are the functions that handle making the enemies etc.
 function makeEnemyGroup(group, type) {
-  for(var x = 0; x < 10; x++) {
+  for(var x = 0; x < 7; x++) {
     for(var y = 0; y < 10; y++){
       // baddy = group.create(200 + Math.random()*500, 50 + Math.random()*200, type);
       enemyHolder++
-      baddy = group.create(480 + x*33, 50 + y*33, type);
+      baddy = group.create(530 + x*33, 50 + y*33, type);
       baddy.anchor.setTo(0.5);
       baddy.scale.x *= -1
       var tween = game.add.tween(baddy).to( { x: baddy.x-20 }, 2000, Phaser.Easing.Linear.None, true, 0, 1000, true);

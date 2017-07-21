@@ -1,0 +1,13 @@
+a:link {
+  text-align: center;
+  border: 1px solid black;
+  float: right;
+  background-color: red;
+  font-family: cursive;
+  text-decoration: none;
+  box-shadow: 1px 5px 3px 2px rgba(0, 0, 0, 0.5);
+}
+a:hover {
+  color: white;
+  box-shadow: inset 1px 1px 3px 2px rgba(0, 0, 0, 0.5);
+}
