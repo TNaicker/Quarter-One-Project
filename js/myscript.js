@@ -426,6 +426,7 @@ function makeEnemyGroup(group, type) {
       baddy = group.create(530 + x*33, 50 + y*33, type);
       baddy.anchor.setTo(0.5);
       baddy.scale.x *= -1
+      baddy.tint = Math.random() * 0xffffff;
       var tween = game.add.tween(baddy).to( { x: baddy.x-20 }, 2000, Phaser.Easing.Linear.None, true, 0, 1000, true);
 
       tween.onLoop.add(descend, this);
